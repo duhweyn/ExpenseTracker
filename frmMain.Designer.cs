@@ -180,6 +180,7 @@
             tsbAdd.Name = "tsbAdd";
             tsbAdd.Size = new Size(33, 22);
             tsbAdd.Text = "Add";
+            tsbAdd.ToolTipText = "Add a new expense";
             // 
             // tsbEdit
             // 
@@ -189,6 +190,7 @@
             tsbEdit.Name = "tsbEdit";
             tsbEdit.Size = new Size(31, 22);
             tsbEdit.Text = "Edit";
+            tsbEdit.ToolTipText = "Edit the selected expense";
             // 
             // tsbDelete
             // 
@@ -198,6 +200,7 @@
             tsbDelete.Name = "tsbDelete";
             tsbDelete.Size = new Size(44, 22);
             tsbDelete.Text = "Delete";
+            tsbDelete.ToolTipText = "Delete the selected expense";
             // 
             // tsbSave
             // 
@@ -207,6 +210,7 @@
             tsbSave.Name = "tsbSave";
             tsbSave.Size = new Size(35, 22);
             tsbSave.Text = "Save";
+            tsbSave.ToolTipText = "Save to file (Ctrl+S)";
             // 
             // statusStrip1
             // 

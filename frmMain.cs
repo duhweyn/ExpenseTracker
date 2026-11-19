@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace ExpenseTracker
 {
     public partial class frmMain : Form
@@ -24,6 +26,12 @@ namespace ExpenseTracker
             mnuEdit.Click += EditExpense; tsbEdit.Click += EditExpense;
             mnuDelete.Click += DeleteExpense; tsbDelete.Click += DeleteExpense;
             mnuExit.Click += (s, e) => Close();
+            mnuNew.Click += NewFile;
+            mnuOpen.Click += OpenFile;
+            mnuSave.Click += SaveFile; 
+            tsbSave.Click += SaveFile;   // menu and toolbar share one handler
+            mnuAbout.Click += ShowAbout;
+            this.FormClosing += frmMain_FormClosing;
             dgvExpenses.CellDoubleClick += (s, e) => { if (e.RowIndex >= 0) EditExpense(s, e); };
 
             // Any filter change refreshes the grid right away
@@ -47,6 +55,125 @@ namespace ExpenseTracker
             tslStatus.Text = "Ready.";
             RefreshGrid();
             UpdateTitle();
+        }
+
+        // ---------- Unsaved changes ----------
+
+        // Returns true if it is safe to continue (saved, discarded, or nothing to save).
+        // Returns false if the user pressed Cancel or the save failed.
+        private bool ConfirmDiscardOrSave()
+        {
+            if (!isDirty) return true;
+
+            DialogResult answer = MessageBox.Show(
+                "You have unsaved changes. Save them first?", "Unsaved Changes",
+                MessageBoxButtons.YesNoCancel, MessageBoxIcon.Warning);
+
+            if (answer == DialogResult.Yes) return SaveToCurrent();  // save first
+            if (answer == DialogResult.No) return true;              // discard
+            return false;                                            // Cancel: stay
+        }
+
+        private void frmMain_FormClosing(object? sender, FormClosingEventArgs e)
+        {
+            if (!ConfirmDiscardOrSave()) e.Cancel = true;   // stop the window from closing
+        }
+
+        // ---------- File menu ----------
+
+        private void NewFile(object? sender, EventArgs e)
+        {
+            if (!ConfirmDiscardOrSave()) return;
+
+            expenses.Clear();
+            currentFile = null;
+            isDirty = false;
+            RefreshGrid();
+            UpdateTitle();
+            tslStatus.Text = "New file.";
+        }
+
+        private void OpenFile(object? sender, EventArgs e)
+        {
+            if (!ConfirmDiscardOrSave()) return;
+
+            using OpenFileDialog dialog = new OpenFileDialog();
+            dialog.Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*";
+            if (dialog.ShowDialog(this) != DialogResult.OK) return;   // user cancelled
+
+            try
+            {
+                string json = File.ReadAllText(dialog.FileName);
+                List<Expense>? loaded = JsonSerializer.Deserialize<List<Expense>>(json);
+
+                expenses.Clear();
+                if (loaded != null) expenses.AddRange(loaded);
+
+                currentFile = dialog.FileName;
+                isDirty = false;
+                RefreshGrid();
+                UpdateTitle();
+                tslStatus.Text = $"Opened {Path.GetFileName(currentFile)}.";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Could not open the file.\n" + ex.Message, "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void SaveFile(object? sender, EventArgs e)
+        {
+            SaveToCurrent();
+        }
+
+        // Save to the current file. If there is none yet, behave like Save As.
+        private bool SaveToCurrent()
+        {
+            if (currentFile == null) return SaveAs();
+            return WriteFile(currentFile);
+        }
+
+        private bool SaveAs()
+        {
+            using SaveFileDialog dialog = new SaveFileDialog();
+            dialog.Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*";
+            dialog.FileName = "expenses.json";
+            if (dialog.ShowDialog(this) != DialogResult.OK) return false;   // user cancelled
+
+            return WriteFile(dialog.FileName);
+        }
+
+        // Does the actual writing. Returns true only if it succeeded.
+        private bool WriteFile(string path)
+        {
+            try
+            {
+                var options = new JsonSerializerOptions { WriteIndented = true };
+                string json = JsonSerializer.Serialize(expenses, options);
+                File.WriteAllText(path, json);
+
+                currentFile = path;
+                isDirty = false;            // removes the * from the title
+                UpdateTitle();
+                tslStatus.Text = $"Saved {expenses.Count} expense(s) to {Path.GetFileName(path)}.";
+                return true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Could not save the file.\n" + ex.Message, "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+        }
+
+        // ---------- Help menu ----------
+
+        private void ShowAbout(object? sender, EventArgs e)
+        {
+            MessageBox.Show(
+                "Expense Tracker (Offline Activity - 11/20/2026)\n\nStephen Dwayne M. Basterechia",
+                "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         // ---------- Add / Edit / Delete ----------
